@@ -1,0 +1,14 @@
+apply plugin: 'org.springframework.boot'
+
+dependencies {
+    implementation project(':api')
+    implementation project(':media')
+    implementation project(':notification')
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+}
+
+springBoot {
+    mainClass = 'com.artisticview.ArtisticViewApplication'
+}

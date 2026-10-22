@@ -1,0 +1,9 @@
+ext {
+    springBootVersion = '3.4.1'
+    dependencyManagementVersion = '1.1.7'
+    lombokVersion = '1.18.36'
+    jjwtVersion = '0.12.6'
+    springdocVersion = '2.8.3'
+    awsSdkVersion = '2.29.6'
+    thumbnailatorVersion = '0.4.20'
+}

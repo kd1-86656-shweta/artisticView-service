@@ -1,0 +1,5 @@
+dependencies {
+    api project(':core')
+    implementation 'software.amazon.awssdk:s3'
+    implementation "net.coobird:thumbnailator:${thumbnailatorVersion}"
+}

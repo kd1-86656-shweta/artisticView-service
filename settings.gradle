@@ -1,0 +1,10 @@
+rootProject.name = 'artisticView-service'
+
+include 'common'
+include 'persistence'
+include 'security'
+include 'core'
+include 'media'
+include 'notification'
+include 'api'
+include 'server'

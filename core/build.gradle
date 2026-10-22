@@ -1,0 +1,8 @@
+dependencies {
+    api project(':common')
+    api project(':persistence')
+    api project(':security')
+    api 'org.springframework.boot:spring-boot-starter-data-redis'
+    api 'org.springframework.boot:spring-boot-starter-mail'
+    api 'org.springframework.boot:spring-boot-starter-cache'
+}
