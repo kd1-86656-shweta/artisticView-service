@@ -8,3 +8,4 @@ bin/
 .env
 storage/
 *.log
+media-uploads/

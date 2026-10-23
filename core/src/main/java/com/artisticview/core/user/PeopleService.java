@@ -3,6 +3,7 @@ package com.artisticview.core.user;
 import com.artisticview.common.dto.PersonCardDto;
 import com.artisticview.common.dto.ProfileDto;
 import com.artisticview.common.dto.UpdateProfileRequest;
+import com.artisticview.common.enums.MediaKind;
 import com.artisticview.common.enums.ProfileVisibility;
 import com.artisticview.common.exception.AppException;
 import com.artisticview.core.storage.MediaUrls;
@@ -17,14 +18,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class PeopleService {
+
+    /** Links a profile can show; "portfolio" is the artist's main site and is shown first. */
+    private static final Set<String> LINK_TYPES =
+            Set.of("portfolio", "website", "instagram", "youtube", "spotify", "soundcloud", "x", "linkedin");
 
     private final UserRepository userRepository;
     private final ProfileRepository profileRepository;
@@ -78,8 +85,14 @@ public class PeopleService {
                     .distinct()
                     .toArray(String[]::new));
         }
+        if (request.avatarKey() != null) {
+            profile.setAvatarKey(ownedImage(request.avatarKey(), MediaKind.AVATAR, userId));
+        }
+        if (request.coverKey() != null) {
+            profile.setCoverKey(ownedImage(request.coverKey(), MediaKind.COVER, userId));
+        }
         if (request.links() != null) {
-            profile.setLinks(request.links());
+            profile.setLinks(cleanLinks(request.links()));
         }
         if (request.profileVisibility() != null) {
             profile.setProfileVisibility(request.profileVisibility());
@@ -108,6 +121,37 @@ public class PeopleService {
         if (followRepository.deleteFollow(viewerId, targetId) == 1) {
             profileRepository.adjustFollowCounts(viewerId, targetId, -1);
         }
+    }
+
+    /** "" removes the image; anything else must be an upload of the right kind made by this user. */
+    private static String ownedImage(String key, MediaKind kind, Long userId) {
+        if (key.isBlank()) {
+            return null;
+        }
+        if (!kind.ownedBy(key, userId)) {
+            throw AppException.badRequest("Upload the image again and retry");
+        }
+        return key;
+    }
+
+    /** Keeps only known link types with http(s) URLs; empty values remove a link. */
+    private static Map<String, String> cleanLinks(Map<String, String> links) {
+        Map<String, String> clean = new LinkedHashMap<>();
+        links.forEach((type, raw) -> {
+            String key = type == null ? "" : type.trim().toLowerCase(Locale.ROOT);
+            String url = raw == null ? "" : raw.trim();
+            if (url.isEmpty()) {
+                return;
+            }
+            if (!LINK_TYPES.contains(key)) {
+                throw AppException.badRequest("Unknown link type: " + type);
+            }
+            if (!url.matches("(?i)^https?://\\S+\\.\\S+$") || url.length() > 300) {
+                throw AppException.badRequest("Enter a full web address for " + key + ", starting with https://");
+            }
+            clean.put(key, url);
+        });
+        return clean;
     }
 
     private PersonCardDto toCard(ProfileRepository.SuggestionRow row, boolean following) {

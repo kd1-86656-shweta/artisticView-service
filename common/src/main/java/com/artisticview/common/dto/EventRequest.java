@@ -22,6 +22,8 @@ public record EventRequest(
         @Size(max = 200) String location,
         @Size(max = 500) String meetingUrl,
         @Min(1) @Max(100000) Integer capacity,
+        /** Media key from an EVENT image upload; "" removes the cover. */
+        @Size(max = 300) String coverKey,
         @Size(max = 10) List<@Size(max = 30) String> collaborators,
         @Min(0) @Max(30) Integer promoteDays) {
 }

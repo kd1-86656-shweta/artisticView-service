@@ -56,6 +56,9 @@ public class Event {
 
     private Integer capacity;
 
+    @Column(name = "cover_key")
+    private String coverKey;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EventStatus status = EventStatus.SCHEDULED;

@@ -7,6 +7,7 @@ import com.artisticview.common.dto.UserSummaryDto;
 import com.artisticview.common.enums.CollaboratorStatus;
 import com.artisticview.common.enums.EventLocationType;
 import com.artisticview.common.enums.EventStatus;
+import com.artisticview.common.enums.MediaKind;
 import com.artisticview.common.exception.AppException;
 import com.artisticview.common.util.Cursor;
 import com.artisticview.common.util.Limits;
@@ -118,7 +119,7 @@ public class EventService {
         }
         Event event = new Event();
         event.setHostId(hostId);
-        apply(event, request);
+        apply(event, request, hostId);
         if (request.promoteDays() != null && request.promoteDays() > 0) {
             event.setPromotedUntil(Instant.now().plus(Duration.ofDays(request.promoteDays())));
         }
@@ -141,7 +142,7 @@ public class EventService {
         if (request.title() != null && request.title().isBlank()) {
             throw AppException.badRequest("Title cannot be empty");
         }
-        apply(event, request);
+        apply(event, request, viewerId);
         if (event.getCapacity() != null && event.getCapacity() < event.getRsvpCount()) {
             throw AppException.badRequest("Capacity cannot be lower than the " + event.getRsvpCount() + " people already going");
         }
@@ -158,7 +159,7 @@ public class EventService {
     }
 
     /** Copies the non-null request fields onto the event and checks the times still make sense. */
-    private void apply(Event event, EventRequest r) {
+    private void apply(Event event, EventRequest r, Long userId) {
         if (r.title() != null) event.setTitle(r.title().trim());
         if (r.description() != null) event.setDescription(blankToNull(r.description()));
         if (r.category() != null) event.setCategory(blankToNull(r.category()));
@@ -168,6 +169,14 @@ public class EventService {
         if (r.location() != null) event.setLocation(blankToNull(r.location()));
         if (r.meetingUrl() != null) event.setMeetingUrl(blankToNull(r.meetingUrl()));
         if (r.capacity() != null) event.setCapacity(r.capacity());
+        if (r.coverKey() != null) {
+            // "" removes the cover; a new one must be an EVENT upload made by the person saving.
+            if (!r.coverKey().isBlank() && !r.coverKey().equals(event.getCoverKey())
+                    && !MediaKind.EVENT.ownedBy(r.coverKey(), userId)) {
+                throw AppException.badRequest("Upload the cover image again and retry");
+            }
+            event.setCoverKey(blankToNull(r.coverKey()));
+        }
         if (event.getEndsAt() != null && !event.getEndsAt().isAfter(event.getStartsAt())) {
             throw AppException.badRequest("The end time must be after the start time");
         }
@@ -347,7 +356,7 @@ public class EventService {
             String meetingUrl = canManage || isGoing ? e.getMeetingUrl() : null;
             return new EventDto(e.getId(), e.getTitle(), e.getDescription(), e.getCategory(),
                     e.getStartsAt(), e.getEndsAt(), e.getLocationType(), e.getLocation(), meetingUrl,
-                    e.getCapacity(), e.getStatus(), people.get(e.getHostId()), visible,
+                    e.getCapacity(), mediaUrls.url(e.getCoverKey()), e.getStatus(), people.get(e.getHostId()), visible,
                     e.getRsvpCount(), isGoing, e.isPromotedAt(now),
                     isHost ? e.getPromotedUntil() : null, isHost, canManage, mine, e.getCreatedAt());
         }).toList();

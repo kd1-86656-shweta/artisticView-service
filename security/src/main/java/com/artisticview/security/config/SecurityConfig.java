@@ -45,6 +45,9 @@ public class SecurityConfig {
 
     private static final String[] PUBLIC_GET = {
             "/auth/check-availability",
+            "/media/**",
+            "/ws",
+            "/ws/**",
             "/actuator/health/**",
             "/swagger-ui/**",
             "/swagger-ui.html",

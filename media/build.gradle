@@ -2,4 +2,5 @@ dependencies {
     api project(':core')
     implementation 'software.amazon.awssdk:s3'
     implementation "net.coobird:thumbnailator:${thumbnailatorVersion}"
+    implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
 }

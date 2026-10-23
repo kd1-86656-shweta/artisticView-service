@@ -13,7 +13,7 @@ import java.util.List;
  */
 public record EventDto(Long id, String title, String description, String category,
                        Instant startsAt, Instant endsAt, EventLocationType locationType, String location,
-                       String meetingUrl, Integer capacity, EventStatus status,
+                       String meetingUrl, Integer capacity, String coverUrl, EventStatus status,
                        UserSummaryDto host, List<CollaboratorDto> collaborators,
                        long rsvpCount, boolean going, boolean promoted, Instant promotedUntil,
                        boolean isHost, boolean canManage, CollaboratorStatus myCollaboration,
