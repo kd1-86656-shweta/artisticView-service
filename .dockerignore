@@ -1,0 +1,8 @@
+.git
+.gradle
+.idea
+**/build
+media-uploads
+server/media-uploads
+*.log
+.env

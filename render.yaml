@@ -1,0 +1,49 @@
+# Render Blueprint (free tier): backend + Postgres + Redis-compatible Key Value.
+# Render dashboard -> New -> Blueprint -> pick this repo -> Apply.
+services:
+  - type: web
+    name: artisticview-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: DB_HOST
+        fromDatabase: { name: artisticview-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: artisticview-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: artisticview-db, property: database }
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase: { name: artisticview-db, property: user }
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase: { name: artisticview-db, property: password }
+      - key: REDIS_HOST
+        fromService: { type: keyvalue, name: artisticview-redis, property: host }
+      - key: REDIS_PORT
+        fromService: { type: keyvalue, name: artisticview-redis, property: port }
+      - key: APP_JWT_SECRET
+        generateValue: true
+      - key: APP_CORS_ALLOWED_ORIGINS
+        value: https://artisticview.vercel.app
+      - key: APP_FRONTEND_URL
+        value: https://artisticview.vercel.app
+      - key: APP_WEBSOCKET_ALLOWED_ORIGINS
+        value: https://artisticview.vercel.app
+      # Free instances have 512 MB; keep the JVM well inside it.
+      - key: JAVA_OPTS
+        value: -Xmx300m -Xss512k -XX:MaxMetaspaceSize=160m -XX:+UseSerialGC -XX:TieredStopAtLevel=1
+
+  - type: keyvalue
+    name: artisticview-redis
+    plan: free
+    region: singapore
+    ipAllowList: []
+
+databases:
+  - name: artisticview-db
+    plan: free
+    region: singapore
+    databaseName: artisticview
+    user: artisticview

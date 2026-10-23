@@ -1,0 +1,113 @@
+# artisticView production stack: one server, everything in Docker.
+# Lives at /opt/artisticview/docker-compose.yml with its secrets in /opt/artisticview/.env (see .env.example).
+# Jenkins builds the artisticview-service and artisticview-web images on this same host and rolls them.
+name: artisticview
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: artisticview-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: artisticview
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d artisticview"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: artisticview-redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  backend:
+    image: artisticview-service:latest
+    container_name: artisticview-backend
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/artisticview
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      APP_JWT_SECRET: ${JWT_SECRET}
+      APP_CORS_ALLOWED_ORIGINS: ${PUBLIC_URL}
+      APP_FRONTEND_URL: ${PUBLIC_URL}
+      APP_WEBSOCKET_ALLOWED_ORIGINS: ${PUBLIC_URL}
+      APP_COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      APP_BOOTSTRAP_SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-}
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
+    # Optional SMTP settings (SPRING_MAIL_HOST, ...). Left out entirely when the file is absent,
+    # because an empty mail host would still switch the mail sender on.
+    env_file:
+      - path: ./backend.env
+        required: false
+    volumes:
+      - media:/data/media
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /actuator/health HTTP/1.0\r\n\r\n' >&3 && grep -q UP <&3"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+
+  web:
+    image: artisticview-web:latest
+    container_name: artisticview-web
+    restart: unless-stopped
+    depends_on: [backend]
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS}
+      JENKINS_ADDRESS: ${JENKINS_ADDRESS:-jenkins.localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+
+  jenkins:
+    build: ./jenkins
+    image: artisticview-jenkins:latest
+    container_name: artisticview-jenkins
+    restart: unless-stopped
+    # Lets the jenkins user talk to the host's Docker without running as root.
+    group_add: ["${DOCKER_GID}"]
+    # Only on the server itself; reach it with an SSH tunnel until jenkins.<domain> is served by Caddy.
+    ports:
+      - "127.0.0.1:8081:8080"
+    environment:
+      JAVA_OPTS: -Xmx1g
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /opt/artisticview:/opt/artisticview
+    profiles: ["ci"]
+
+volumes:
+  pgdata:
+  redisdata:
+  media:
+  caddy_data:
+  caddy_config:
+  jenkins_home:

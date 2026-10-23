@@ -12,3 +12,7 @@ dependencies {
 springBoot {
     mainClass = 'com.artisticview.ArtisticViewApplication'
 }
+
+// Fixed name for the Docker image; skip the plain (non-runnable) jar.
+bootJar { archiveFileName = 'app.jar' }
+jar { enabled = false }
